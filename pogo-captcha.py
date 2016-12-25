@@ -17,6 +17,10 @@ import platform
 
 config = None
 
+ban_file = "ban.csv" #banned accounts
+ok_file = "ok.csv" #account ready to use
+error_file = "error.csv" #accounts with error
+
 def init_config():
     parser = argparse.ArgumentParser()
 
@@ -86,6 +90,10 @@ def activateUser(api, captchatoken, username):
     print_debug("Recaptcha token: {}".format(captchatoken), username)
     response = api.verify_challenge(token = captchatoken)
     print_debug("Response:{}".format(response), username)
+    
+def write_to_file(filename, auth, username, password):
+  with open(filename, "a") as my_file:
+    my_file.write("{},{},{}\n".format(auth, username, password))
 
 
 def solveCaptchas(mode, username, password, location, captchakey2):
@@ -127,8 +135,15 @@ def solveCaptchas(mode, username, password, location, captchakey2):
         time.sleep(1)
         response = api.check_challenge()
         
+        #bancheck = api.call()
+        #print_debug(response, username)
+        if response['status_code'] == 3:
+            print_info("{} is banned".format(username), username)
+            write_to_file(ban_file, mode, username, password)
+            return
+        
         captcha_url = None
-
+        
         try:
             captcha_url = response['responses']['CHECK_CHALLENGE']['challenge_url'];
         except Exception:
@@ -137,6 +152,7 @@ def solveCaptchas(mode, username, password, location, captchakey2):
         
         if len(captcha_url) == 1:
             print_info("No captcha required", username)
+            write_to_file(ok_file, auth, username, password)
             #skip, captcha not necessary
         else:
             print_info("Captcha required", username)
@@ -158,7 +174,20 @@ def solveCaptchas(mode, username, password, location, captchakey2):
                     print_error("Chromedriver seems to have some problem. Do you have the latest version?")
                     return
                 
-            driver.get(captcha_url)
+            #driver.get(captcha_url)
+            ex_script = '''window.globalVariable = "Fail";
+            var captchaPage = '<form action="?" method="POST"><div class="g-recaptcha" data-size="compact" data-sitekey="6LeeTScTAAAAADqvhqVMhPpr_vB9D364Ia-1dSgK" data-callback="captchaResponse"></form>';
+            document.body.parentElement.innerHTML = captchaPage;
+            var script = document.createElement('script');
+            script.src = 'https://www.google.com/recaptcha/api.js?hl=en';
+            script.type = 'text/javascript';
+            document.getElementsByTagName('head')[0].appendChild(script);
+            var script2 = document.createElement('script');
+            script2.type = 'text/javascript';
+            script2.text = 'function captchaResponse(str) {window.globalVariable = str;}'
+            document.getElementsByTagName('head')[0].appendChild(script2);
+            '''
+            driver.execute_script(ex_script)
             
             if captchakey2 == "":
                 #Do manual captcha entry
@@ -211,13 +240,15 @@ def solveCaptchas(mode, username, password, location, captchakey2):
                     print_info("Solved captcha", username)
                 token = driver.execute_script("return grecaptcha.getResponse()")
                 
-                
                 activateUser(api, token, username)
+                write_to_file(ok_file, auth, username, password)
+                
     except Exception, e:
         print_error(repr(e), username)
         exc_type, exc_obj, exc_tb = sys.exc_info()
         print_debug(exc_type, username)
         print_debug(exc_tb.tb_lineno, username)
+        write_to_file(error_file, username, password)
 
 config = init_config()
 if not config:
@@ -248,8 +279,3 @@ else:
             except Exception, e:
                 print_error("Unhandled exception. Skipping to next account.")
                 print_debug(repr(e), username)
-            
-
-
-
-	
