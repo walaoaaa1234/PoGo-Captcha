@@ -152,7 +152,7 @@ def solveCaptchas(mode, username, password, location, captchakey2):
         
         if len(captcha_url) == 1:
             print_info("No captcha required", username)
-            write_to_file(ok_file, auth, username, password)
+            write_to_file(ok_file, mode, username, password)
             #skip, captcha not necessary
         else:
             print_info("Captcha required", username)
