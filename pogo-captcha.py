@@ -173,7 +173,7 @@ def solveCaptchas(mode, username, password, location, captchakey2):
                 except Exception:
                     print_error("Chromedriver seems to have some problem. Do you have the latest version?")
                     return
-                
+            driver.get("https://pgorelease.nianticlabs.com/")
             #driver.get(captcha_url)
             ex_script = '''window.globalVariable = "Fail";
             var captchaPage = '<form action="?" method="POST"><div class="g-recaptcha" data-size="compact" data-sitekey="6LeeTScTAAAAADqvhqVMhPpr_vB9D364Ia-1dSgK" data-callback="captchaResponse"></form>';
